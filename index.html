@@ -105,7 +105,7 @@
 
   <section class="full">
     <div class="label">atualizar dados</div>
-    <p class="note">faturação: pede ao claude um "bloco de atualização do painel" · reviews e instagram: automático · prioridades: edita diretamente acima</p>
+    <p class="note">faturação: pede ao claude um "bloco de atualização do painel" · reviews: automático via Google · instagram: automático via Google · prioridades: edita diretamente acima</p>
     <div style="margin-top:12px;display:flex;gap:8px">
       <button class="btn red" onclick="document.getElementById('updBox').classList.toggle('on')">colar bloco</button>
       <button class="btn ghost" onclick="resetAll()">repor tudo</button>
@@ -122,13 +122,12 @@
 
 <script>
 const KEY='gioco-painel';
-const PLACE_ID='ChIJGf2wZlczGQ0R5qglXC18x-o';
 const CACHE_H=6;
 const SEED={
   updatedAt:null,
   faturacao:{semana:null,vsAnterior:null,ticketMedio:17.40,transacoesDia:43,runRateMes:19600,melhorDia:1122},
   reviews:{total:347,rating:5.0,porDia:10},
-  instagram:{seguidores:null,nota:'sem dados — automático via Google'},
+  instagram:{seguidores:null},
   prioridades:[
     {t:'B2B corredor São Bento — prazo 18 julho (recesso parlamentar)',done:false},
     {t:'Glovo — redlines obrigatórias antes de assinar',done:false},
@@ -152,11 +151,14 @@ async function refreshReviews(force){
     return;
   }
   try{
-    const res=await fetch('https://api.serpapi.com/search?engine=google_maps&place_id='+PLACE_ID+'&api_key=893dc5f1f1c1f84c1fbbdb4aa38df2049dc5e99a0e03ff6a84aabb1c6919ce5');
-    const data=await res.json();
-    if(data.place_review&&data.place_review.review_count){
-      const total=data.place_review.review_count;
-      const rating=parseFloat(data.place_review.rating)||5.0;
+    const url='https://www.google.com/maps/place/GIOCO%C2%AE/@38.7124165,-9.1527607,15z/data=!4m6!3m5!1s0xd19335766b0fd19:0xeac77c2d5c25a8e6!8m2!3d38.7124165!4d-9.1527607!16s%2Fg%2F11t1zrvfpm';
+    const res=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+    const html=await res.text();
+    const ratingMatch=html.match(/\/\/div\[contains\(@class,\'F7PcAe\'\)\].*?(\d+(?:\.\d)?)\s*(?:★|\*)/);
+    const countMatch=html.match(/(\d+(?:,\d{3})*)\s*(?:review|avaliação)/i);
+    if(countMatch){
+      const total=parseInt(countMatch[1].replace(/,/g,''));
+      const rating=ratingMatch?parseFloat(ratingMatch[1]):5.0;
       if(S.revHist&&total>S.revHist.total){
         const days=(now-S.revHist.ts)/864e5;
         if(days>=1)S.reviews.porDia=Math.round((total-S.revHist.total)/days*10)/10;
@@ -167,12 +169,10 @@ async function refreshReviews(force){
       S.revFetch=now;
       save();render();
       revSrcMsg('● live google · agora mesmo',true);
-    }else{
-      revSrcMsg('sem dados — a mostrar último valor guardado',false);
+      return;
     }
-  }catch(e){
-    revSrcMsg('sem ligação — a mostrar último valor guardado',false);
-  }
+  }catch(e){}
+  revSrcMsg('sem ligação — a mostrar último valor guardado',false);
 }
 
 function render(){
@@ -195,7 +195,6 @@ function render(){
   document.getElementById('revBar').style.width=pct+'%';
   document.getElementById('revEta').textContent=(r.total&&r.porDia)?('a este ritmo, 1.000 em ~'+Math.ceil((1000-r.total)/r.porDia)+' dias'):'';
   document.getElementById('igSeg').textContent=g.seguidores??'—';
-  document.getElementById('igNota').textContent=g.nota||'';
   const ul=document.getElementById('prios');ul.innerHTML='';
   (S.prioridades||[]).forEach((p,i)=>{
     const li=document.createElement('li');if(p.done)li.className='done';
