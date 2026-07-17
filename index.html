@@ -147,18 +147,17 @@ function revSrcMsg(t,live){
 async function refreshReviews(force){
   const now=Date.now();
   if(!force&&S.revFetch&&(now-S.revFetch)<CACHE_H*36e5){
-    revSrcMsg('● live google · leitura de '+new Date(S.revFetch).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),true);
+    revSrcMsg('● live google · '+new Date(S.revFetch).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),true);
     return;
   }
   try{
-    const url='https://www.google.com/maps/place/GIOCO%C2%AE/@38.7124165,-9.1527607,15z/data=!4m6!3m5!1s0xd19335766b0fd19:0xeac77c2d5c25a8e6!8m2!3d38.7124165!4d-9.1527607!16s%2Fg%2F11t1zrvfpm';
-    const res=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+    const res=await fetch('https://www.google.com/maps/place/GIOCO/@38.7124165,-9.1527607/data=!3m1!4b1!4m5!3m4!1s0xd19335766b0fd19:0xeac77c2d5c25a8e6!8m2!3d38.7124165!4d-9.1527607?hl=pt');
     const html=await res.text();
-    const ratingMatch=html.match(/\/\/div\[contains\(@class,\'F7PcAe\'\)\].*?(\d+(?:\.\d)?)\s*(?:★|\*)/);
-    const countMatch=html.match(/(\d+(?:,\d{3})*)\s*(?:review|avaliação)/i);
-    if(countMatch){
-      const total=parseInt(countMatch[1].replace(/,/g,''));
-      const rating=ratingMatch?parseFloat(ratingMatch[1]):5.0;
+    const m1=html.match(/>\s*(\d+)\s*avaliações?\s*<|(\d+)\s*reviews?|"reviewCount":\s*(\d+)/i);
+    const m2=html.match(/>\s*(4[.,]\d+|5[.,]0)\s*★|"ratingValue":\s*(4[.,]\d+|5[.,]0)/i);
+    if(m1){
+      const total=parseInt(m1[1]||m1[2]||m1[3]);
+      const rating=m2?parseFloat((m2[1]||m2[2]).replace(',','.')):5.0;
       if(S.revHist&&total>S.revHist.total){
         const days=(now-S.revHist.ts)/864e5;
         if(days>=1)S.reviews.porDia=Math.round((total-S.revHist.total)/days*10)/10;
