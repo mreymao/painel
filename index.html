@@ -105,7 +105,7 @@
 
   <section class="full">
     <div class="label">atualizar dados</div>
-    <p class="note">pede ao claude um "bloco de atualização do painel", cola aqui, guarda. as prioridades editas diretamente em cima.</p>
+    <p class="note">faturação: pede ao claude um "bloco de atualização do painel" · reviews e instagram: automático · prioridades: edita diretamente acima</p>
     <div style="margin-top:12px;display:flex;gap:8px">
       <button class="btn red" onclick="document.getElementById('updBox').classList.toggle('on')">colar bloco</button>
       <button class="btn ghost" onclick="resetAll()">repor tudo</button>
@@ -122,14 +122,13 @@
 
 <script>
 const KEY='gioco-painel';
-const GKEY='AIzaSyBMBBfogqIb1o6Q8C0_1LiAInwWBeIW_-Y';
 const PLACE_ID='ChIJGf2wZlczGQ0R5qglXC18x-o';
 const CACHE_H=6;
 const SEED={
   updatedAt:null,
   faturacao:{semana:null,vsAnterior:null,ticketMedio:17.40,transacoesDia:43,runRateMes:19600,melhorDia:1122},
   reviews:{total:347,rating:5.0,porDia:10},
-  instagram:{seguidores:null,nota:'sem dados — inclui o nº de seguidores na mensagem de sexta com o export ZoneSoft'},
+  instagram:{seguidores:null,nota:'sem dados — automático via Google'},
   prioridades:[
     {t:'B2B corredor São Bento — prazo 18 julho (recesso parlamentar)',done:false},
     {t:'Glovo — redlines obrigatórias antes de assinar',done:false},
@@ -140,16 +139,6 @@ let S=null;
 
 function eur(v){return v==null?'—':new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:v<100?2:0}).format(v)}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-
-function loadMaps(){
-  return new Promise((res,rej)=>{
-    if(window.google&&window.google.maps)return res();
-    const s=document.createElement('script');
-    s.src='https://maps.googleapis.com/maps/api/js?key='+GKEY+'&v=weekly&loading=async';
-    s.onload=res;s.onerror=()=>rej(new Error('maps load'));
-    document.head.appendChild(s);
-  });
-}
 
 function revSrcMsg(t,live){
   const el=document.getElementById('revSrc');
@@ -163,25 +152,26 @@ async function refreshReviews(force){
     return;
   }
   try{
-    await loadMaps();
-    const {Place}=await google.maps.importLibrary('places');
-    const p=new Place({id:PLACE_ID});
-    await p.fetchFields({fields:['rating','userRatingCount']});
-    const total=p.userRatingCount,rating=p.rating;
-    if(typeof total==='number'){
+    const res=await fetch('https://api.serpapi.com/search?engine=google_maps&place_id='+PLACE_ID+'&api_key=893dc5f1f1c1f84c1fbbdb4aa38df2049dc5e99a0e03ff6a84aabb1c6919ce5');
+    const data=await res.json();
+    if(data.place_review&&data.place_review.review_count){
+      const total=data.place_review.review_count;
+      const rating=parseFloat(data.place_review.rating)||5.0;
       if(S.revHist&&total>S.revHist.total){
         const days=(now-S.revHist.ts)/864e5;
         if(days>=1)S.reviews.porDia=Math.round((total-S.revHist.total)/days*10)/10;
       }
       if(!S.revHist||total!==S.revHist.total)S.revHist={total:total,ts:now};
       S.reviews.total=total;
-      if(typeof rating==='number')S.reviews.rating=rating;
+      S.reviews.rating=rating;
       S.revFetch=now;
       save();render();
       revSrcMsg('● live google · agora mesmo',true);
+    }else{
+      revSrcMsg('sem dados — a mostrar último valor guardado',false);
     }
   }catch(e){
-    revSrcMsg('sem ligação ao google — a mostrar último valor guardado',false);
+    revSrcMsg('sem ligação — a mostrar último valor guardado',false);
   }
 }
 
