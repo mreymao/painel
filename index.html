@@ -84,6 +84,7 @@
     <div class="sub"><span id="revDia">—</span> reviews/dia · meta: 1.000</div>
     <div class="bar"><i id="revBar" style="width:0%"></i></div>
     <div class="sub" id="revEta" style="margin-top:8px"></div>
+    <div class="sub" id="revSrc" style="margin-top:4px;font-family:'Space Mono',monospace;font-size:11px"></div>
   </section>
 
   <section id="secIg">
@@ -121,10 +122,13 @@
 
 <script>
 const KEY='gioco-painel';
+const GKEY='AlzaSyCE0fIHoXHjBWZV0U07Ow4FOgz-9T8B0o';
+const PLACE_ID='ChIJGf2wZlczGQ0R5qglXC18x-o';
+const CACHE_H=6;
 const SEED={
   updatedAt:null,
   faturacao:{semana:null,vsAnterior:null,ticketMedio:17.40,transacoesDia:43,runRateMes:19600,melhorDia:1122},
-  reviews:{total:342,rating:5.0,porDia:10},
+  reviews:{total:347,rating:5.0,porDia:10},
   instagram:{seguidores:null,nota:'sem dados — inclui o nº de seguidores na mensagem de sexta com o export ZoneSoft'},
   prioridades:[
     {t:'B2B corredor São Bento — prazo 18 julho (recesso parlamentar)',done:false},
@@ -136,6 +140,50 @@ let S=null;
 
 function eur(v){return v==null?'—':new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:v<100?2:0}).format(v)}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function loadMaps(){
+  return new Promise((res,rej)=>{
+    if(window.google&&window.google.maps)return res();
+    const s=document.createElement('script');
+    s.src='https://maps.googleapis.com/maps/api/js?key='+GKEY+'&v=weekly&loading=async';
+    s.onload=res;s.onerror=()=>rej(new Error('maps load'));
+    document.head.appendChild(s);
+  });
+}
+
+function revSrcMsg(t,live){
+  const el=document.getElementById('revSrc');
+  if(el){el.textContent=t;el.style.color=live?'#1D7A46':'var(--muted)'}
+}
+
+async function refreshReviews(force){
+  const now=Date.now();
+  if(!force&&S.revFetch&&(now-S.revFetch)<CACHE_H*36e5){
+    revSrcMsg('● live google · leitura de '+new Date(S.revFetch).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),true);
+    return;
+  }
+  try{
+    await loadMaps();
+    const {Place}=await google.maps.importLibrary('places');
+    const p=new Place({id:PLACE_ID});
+    await p.fetchFields({fields:['rating','userRatingCount']});
+    const total=p.userRatingCount,rating=p.rating;
+    if(typeof total==='number'){
+      if(S.revHist&&total>S.revHist.total){
+        const days=(now-S.revHist.ts)/864e5;
+        if(days>=1)S.reviews.porDia=Math.round((total-S.revHist.total)/days*10)/10;
+      }
+      if(!S.revHist||total!==S.revHist.total)S.revHist={total:total,ts:now};
+      S.reviews.total=total;
+      if(typeof rating==='number')S.reviews.rating=rating;
+      S.revFetch=now;
+      save();render();
+      revSrcMsg('● live google · agora mesmo',true);
+    }
+  }catch(e){
+    revSrcMsg('sem ligação ao google — a mostrar último valor guardado',false);
+  }
+}
 
 function render(){
   const f=S.faturacao||{},r=S.reviews||{},g=S.instagram||{};
@@ -204,6 +252,7 @@ async function resetAll(){
     S=r?JSON.parse(r):JSON.parse(JSON.stringify(SEED));
   }catch(e){S=JSON.parse(JSON.stringify(SEED))}
   render();
+  refreshReviews(false);
 })();
 </script>
 </body>
