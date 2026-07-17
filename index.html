@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>gioco — painel</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="gioco">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#D91124; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E8E6E1; --card:#FAF9F7; --white:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--white);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .mono{font-family:'Space Mono',monospace}
+  header{display:flex;justify-content:space-between;align-items:baseline;padding:28px 24px 20px;border-bottom:3px solid var(--red)}
+  header h1{font-family:'Space Mono',monospace;font-weight:700;font-size:22px;letter-spacing:-0.5px}
+  header h1 span{color:var(--red)}
+  #stamp{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)}
+  main{max-width:900px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:700px){main{grid-template-columns:1fr}}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
+  section.full{grid-column:1/-1}
+  .label{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;text-transform:lowercase;letter-spacing:0.5px;color:var(--red);margin-bottom:14px}
+  .big{font-family:'Space Mono',monospace;font-weight:700;font-size:44px;letter-spacing:-1.5px;line-height:1.1}
+  .big small{font-size:18px;font-weight:400;letter-spacing:0;color:var(--muted)}
+  .sub{font-size:14px;color:var(--muted);margin-top:4px}
+  .row{display:flex;gap:28px;margin-top:18px;flex-wrap:wrap}
+  .kpi .v{font-family:'Space Mono',monospace;font-weight:700;font-size:20px}
+  .kpi .k{font-size:12px;color:var(--muted)}
+  .delta{font-family:'Space Mono',monospace;font-size:14px;margin-top:8px}
+  .delta.up{color:#1D7A46}.delta.down{color:var(--red)}
+  .bar{height:8px;background:var(--line);border-radius:4px;margin-top:14px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--red)}
+  .stale{display:none;margin-top:14px;font-family:'Space Mono',monospace;font-size:12px;color:var(--red)}
+  .stale.on{display:block}
+  ul#prios{list-style:none;margin-top:2px}
+  ul#prios li{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  ul#prios li:last-child{border-bottom:none}
+  ul#prios input[type=checkbox]{width:18px;height:18px;accent-color:var(--red);margin-top:3px;flex-shrink:0}
+  ul#prios li.done label{text-decoration:line-through;color:var(--muted)}
+  ul#prios label{flex:1;cursor:pointer}
+  ul#prios button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px}
+  .addrow{display:flex;gap:8px;margin-top:14px}
+  .addrow input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:var(--white)}
+  .addrow button,.btn{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:10px 16px;border:none;border-radius:8px;background:var(--ink);color:var(--white);cursor:pointer}
+  .btn.red{background:var(--red)}
+  .btn.ghost{background:none;color:var(--muted);border:1px solid var(--line)}
+  #updBox{display:none;margin-top:14px}
+  #updBox.on{display:block}
+  #updBox textarea{width:100%;min-height:120px;padding:12px;border:1px solid var(--line);border-radius:8px;font-family:'Space Mono',monospace;font-size:12px;background:var(--white);resize:vertical}
+  #updBox .hint{font-size:13px;color:var(--muted);margin:8px 0}
+  #msg{font-family:'Space Mono',monospace;font-size:12px;margin-top:8px;min-height:16px}
+  #msg.ok{color:#1D7A46}#msg.err{color:var(--red)}
+  footer{max-width:900px;margin:0 auto;padding:8px 24px 40px;font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)}
+  .note{font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>gioco <span>—</span> painel</h1>
+  <div id="stamp">a carregar…</div>
+</header>
+<main>
+  <section class="full" id="secFat">
+    <div class="label">faturação</div>
+    <div class="big" id="fatSemana">—</div>
+    <div class="sub">esta semana (bruto, c/ IVA)</div>
+    <div class="delta" id="fatDelta"></div>
+    <div class="row">
+      <div class="kpi"><div class="v" id="ticket">—</div><div class="k">ticket médio</div></div>
+      <div class="kpi"><div class="v" id="trans">—</div><div class="k">transações/dia</div></div>
+      <div class="kpi"><div class="v" id="runrate">—</div><div class="k">run-rate mensal</div></div>
+      <div class="kpi"><div class="v" id="recorde">—</div><div class="k">melhor dia</div></div>
+    </div>
+    <div class="stale" id="staleFat">⚠ dados com mais de 8 dias — envia o export ZoneSoft ao Claude</div>
+  </section>
+
+  <section id="secRev">
+    <div class="label">reviews google</div>
+    <div class="big"><span id="revTotal">—</span> <small id="revRating"></small></div>
+    <div class="sub"><span id="revDia">—</span> reviews/dia · meta: 1.000</div>
+    <div class="bar"><i id="revBar" style="width:0%"></i></div>
+    <div class="sub" id="revEta" style="margin-top:8px"></div>
+  </section>
+
+  <section id="secIg">
+    <div class="label">instagram</div>
+    <div class="big" id="igSeg">—</div>
+    <div class="sub">seguidores</div>
+    <div class="note" id="igNota" style="margin-top:12px"></div>
+  </section>
+
+  <section class="full">
+    <div class="label">prioridades &amp; pendentes</div>
+    <ul id="prios"></ul>
+    <div class="addrow">
+      <input id="newPrio" type="text" placeholder="nova prioridade…" onkeydown="if(event.key==='Enter')addPrio()">
+      <button onclick="addPrio()">adicionar</button>
+    </div>
+  </section>
+
+  <section class="full">
+    <div class="label">atualizar dados</div>
+    <p class="note">pede ao claude um "bloco de atualização do painel", cola aqui, guarda. as prioridades editas diretamente em cima.</p>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn red" onclick="document.getElementById('updBox').classList.toggle('on')">colar bloco</button>
+      <button class="btn ghost" onclick="resetAll()">repor tudo</button>
+    </div>
+    <div id="updBox">
+      <div class="hint">cola o JSON exatamente como o claude o deu:</div>
+      <textarea id="updTxt" placeholder='{"updatedAt":"2026-07-17", ...}'></textarea>
+      <div style="margin-top:8px"><button class="btn" onclick="applyUpdate()">guardar</button></div>
+    </div>
+    <div id="msg"></div>
+  </section>
+</main>
+<footer>o painel é o espelho; a conversa com o claude é o motor.</footer>
+
+<script>
+const KEY='gioco-painel';
+const SEED={
+  updatedAt:null,
+  faturacao:{semana:null,vsAnterior:null,ticketMedio:17.40,transacoesDia:43,runRateMes:19600,melhorDia:1122},
+  reviews:{total:342,rating:5.0,porDia:10},
+  instagram:{seguidores:null,nota:'sem dados — inclui o nº de seguidores na mensagem de sexta com o export ZoneSoft'},
+  prioridades:[
+    {t:'B2B corredor São Bento — prazo 18 julho (recesso parlamentar)',done:false},
+    {t:'Glovo — redlines obrigatórias antes de assinar',done:false},
+    {t:'Enviar export ZoneSoft ao Claude para primeira atualização real',done:false}
+  ]
+};
+let S=null;
+
+function eur(v){return v==null?'—':new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',maximumFractionDigits:v<100?2:0}).format(v)}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function render(){
+  const f=S.faturacao||{},r=S.reviews||{},g=S.instagram||{};
+  document.getElementById('stamp').textContent=S.updatedAt?('atualizado '+S.updatedAt):'sem atualização real — valores de arranque';
+  document.getElementById('fatSemana').textContent=f.semana!=null?eur(f.semana):'—';
+  const d=document.getElementById('fatDelta');
+  if(f.vsAnterior!=null){const up=f.vsAnterior>=0;d.textContent=(up?'▲ +':'▼ ')+f.vsAnterior+'% vs semana anterior';d.className='delta '+(up?'up':'down')}else d.textContent='';
+  document.getElementById('ticket').textContent=f.ticketMedio!=null?eur(f.ticketMedio):'—';
+  document.getElementById('trans').textContent=f.transacoesDia??'—';
+  document.getElementById('runrate').textContent=f.runRateMes!=null?eur(f.runRateMes):'—';
+  document.getElementById('recorde').textContent=f.melhorDia!=null?eur(f.melhorDia):'—';
+  let stale=true;
+  if(S.updatedAt){const days=(Date.now()-new Date(S.updatedAt))/864e5;stale=days>8}
+  document.getElementById('staleFat').classList.toggle('on',stale);
+  document.getElementById('revTotal').textContent=r.total??'—';
+  document.getElementById('revRating').textContent=r.rating!=null?('★ '+Number(r.rating).toFixed(1)):'';
+  document.getElementById('revDia').textContent=r.porDia!=null?('~'+r.porDia):'—';
+  const pct=r.total?Math.min(100,r.total/1000*100):0;
+  document.getElementById('revBar').style.width=pct+'%';
+  document.getElementById('revEta').textContent=(r.total&&r.porDia)?('a este ritmo, 1.000 em ~'+Math.ceil((1000-r.total)/r.porDia)+' dias'):'';
+  document.getElementById('igSeg').textContent=g.seguidores??'—';
+  document.getElementById('igNota').textContent=g.nota||'';
+  const ul=document.getElementById('prios');ul.innerHTML='';
+  (S.prioridades||[]).forEach((p,i)=>{
+    const li=document.createElement('li');if(p.done)li.className='done';
+    li.innerHTML='<input type="checkbox" '+(p.done?'checked':'')+' onchange="togglePrio('+i+')"><label onclick="togglePrio('+i+')">'+esc(p.t)+'</label><button onclick="delPrio('+i+')" aria-label="remover">×</button>';
+    ul.appendChild(li);
+  });
+}
+
+async function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S))}
+  catch(e){flag('erro ao guardar — tenta outra vez',false)}
+}
+function flag(t,ok){const m=document.getElementById('msg');m.textContent=t;m.className=ok?'ok':'err';setTimeout(()=>{m.textContent=''},4000)}
+
+function togglePrio(i){S.prioridades[i].done=!S.prioridades[i].done;save();render()}
+function delPrio(i){S.prioridades.splice(i,1);save();render()}
+function addPrio(){const el=document.getElementById('newPrio');const t=el.value.trim();if(!t)return;S.prioridades.push({t,done:false});el.value='';save();render()}
+
+function applyUpdate(){
+  const raw=document.getElementById('updTxt').value.trim();
+  if(!raw){flag('cola primeiro o bloco',false);return}
+  try{
+    const u=JSON.parse(raw);
+    if(u.faturacao)S.faturacao={...S.faturacao,...u.faturacao};
+    if(u.reviews)S.reviews={...S.reviews,...u.reviews};
+    if(u.instagram)S.instagram={...S.instagram,...u.instagram};
+    if(Array.isArray(u.prioridades))S.prioridades=u.prioridades.map(p=>typeof p==='string'?{t:p,done:false}:p);
+    if(u.updatedAt)S.updatedAt=u.updatedAt;
+    save();render();
+    document.getElementById('updTxt').value='';
+    document.getElementById('updBox').classList.remove('on');
+    flag('guardado ✓',true);
+  }catch(e){flag('JSON inválido — copia o bloco completo do claude',false)}
+}
+
+async function resetAll(){
+  if(!confirm('repor tudo aos valores de arranque?'))return;
+  S=JSON.parse(JSON.stringify(SEED));await save();render();
+}
+
+(async function init(){
+  try{
+    const r=localStorage.getItem(KEY);
+    S=r?JSON.parse(r):JSON.parse(JSON.stringify(SEED));
+  }catch(e){S=JSON.parse(JSON.stringify(SEED))}
+  render();
+})();
+</script>
+</body>
+</html>
